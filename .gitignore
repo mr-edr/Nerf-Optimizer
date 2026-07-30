@@ -1,3 +1,9 @@
 .idea/
 instant-ngp/
 ngp_metaheuristics/analysis/
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Generated files
+ngp_metaheuristics/ga_eval_work/
