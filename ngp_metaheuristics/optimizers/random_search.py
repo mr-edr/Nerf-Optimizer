@@ -24,6 +24,7 @@ import random
 from core.search_space import SEARCH_SPACE, random_vector
 from core.genome import apply_genome, describe
 from core.fitness import evaluate
+from core.population_init import load_population
 
 
 def run(args):
@@ -42,8 +43,12 @@ def run(args):
         writer.writerow(["sample", "fitness", "ok", "failure_reason",
                           "peak_vram_mb", "elapsed_s"] + [p.name for p in SEARCH_SPACE])
 
+        seed_pop = []
+        if getattr(args, "init_population", None):
+            seed_pop = load_population(args.init_population)[:args.n_samples]
+
         for i in range(args.n_samples):
-            vector = random_vector()
+            vector = seed_pop[i] if i < len(seed_pop) else random_vector()
             cfg = apply_genome(base_cfg, vector)
             result = evaluate(cfg, args.scene, args.out_dir, args)
 
@@ -85,6 +90,8 @@ def parse_args():
     p.add_argument("--frame_idx", type=int, default=0)
 
     p.add_argument("--seed", type=int, default=1337)
+    p.add_argument("--init_population", default=None,
+                    help="path to a population JSON built by core/population_init.py; these are evaluated first, counted toward n_samples")
     return p.parse_args()
 
 

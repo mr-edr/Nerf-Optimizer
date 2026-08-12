@@ -7,3 +7,4 @@ __pycache__/
 
 # Generated files
 ngp_metaheuristics/ga_eval_work/
+ngp_metaheuristics/results

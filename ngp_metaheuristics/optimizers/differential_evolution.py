@@ -20,8 +20,9 @@ import os
 import random
 
 from core.search_space import SEARCH_SPACE, DIM
-from core.genome import from_unit, random_unit_vector, describe, apply_genome
+from core.genome import from_unit, random_unit_vector, describe, apply_genome, to_unit
 from core.fitness import evaluate
+from core.population_init import load_population
 
 
 def run(args):
@@ -32,7 +33,14 @@ def run(args):
         base_cfg = json.load(f)
 
     # Population in unit space
-    population = [random_unit_vector() for _ in range(args.pop_size)]
+    if getattr(args, "init_population", None):
+        seed_pop = load_population(args.init_population)  # value space
+        population = [to_unit(v) for v in seed_pop]
+        while len(population) < args.pop_size:
+            population.append(random_unit_vector())
+        population = population[:args.pop_size]
+    else:
+        population = [random_unit_vector() for _ in range(args.pop_size)]
     fitness_cache = [None] * args.pop_size  # (psnr, ok) per individual, filled gen 0
 
     best_fitness = -1e9
@@ -131,6 +139,8 @@ def parse_args():
     p.add_argument("--frame_idx", type=int, default=0)
 
     p.add_argument("--seed", type=int, default=1337)
+    p.add_argument("--init_population", default=None,
+                    help="path to a population JSON built by core/population_init.py; overrides random init")
     return p.parse_args()
 
 

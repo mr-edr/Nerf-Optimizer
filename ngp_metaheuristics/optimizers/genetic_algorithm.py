@@ -19,6 +19,7 @@ from copy import deepcopy
 from core.search_space import SEARCH_SPACE, random_vector, sanitize
 from core.genome import apply_genome, describe
 from core.fitness import evaluate
+from core.population_init import load_population
 
 
 def mutate(vector, rate=0.3):
@@ -54,7 +55,14 @@ def run(args):
     with open(args.base) as f:
         base_cfg = json.load(f)
 
-    population = [random_vector() for _ in range(args.pop_size)]
+    if getattr(args, "init_population", None):
+        population = load_population(args.init_population)
+        # Pad or trim to exactly pop_size in case the file was built for a different size
+        while len(population) < args.pop_size:
+            population.append(random_vector())
+        population = population[:args.pop_size]
+    else:
+        population = [random_vector() for _ in range(args.pop_size)]
     best_fitness = -1e9
     best_vector = None
 
@@ -136,6 +144,8 @@ def parse_args():
     p.add_argument("--frame_idx", type=int, default=0)
 
     p.add_argument("--seed", type=int, default=1337)
+    p.add_argument("--init_population", default=None,
+                    help="path to a population JSON built by core/population_init.py; overrides random init")
     return p.parse_args()
 
 

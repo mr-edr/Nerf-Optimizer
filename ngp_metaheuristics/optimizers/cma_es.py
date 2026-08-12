@@ -37,8 +37,9 @@ except ImportError:
     )
 
 from core.search_space import SEARCH_SPACE, DIM
-from core.genome import from_unit, describe, apply_genome
+from core.genome import from_unit, describe, apply_genome, to_unit
 from core.fitness import evaluate
+from core.population_init import load_population, load_population_with_sources
 
 
 def run(args):
@@ -57,11 +58,32 @@ def run(args):
         writer.writerow(["generation", "individual", "fitness", "ok", "failure_reason",
                           "peak_vram_mb", "elapsed_s"] + [p.name for p in SEARCH_SPACE])
 
-        # Start at the center of unit space (0.5, ..., 0.5) with initial
-        # sigma covering a good chunk of the space -- 0.3 is a common
+        # Start at the center of unit space (0.5, ..., 0.5) by default, with
+        # initial sigma covering a good chunk of the space -- 0.3 is a common
         # default for unit-box CMA-ES (sigma is roughly "typical step size").
-        x0 = [0.5] * DIM
-        sigma0 = 0.3
+        # If a seeded population was provided (e.g. Instant-NGP's own
+        # presets), start the mean at that population's centroid instead --
+        # CMA-ES has no notion of "initial population" the way GA/DE/PSO do,
+        # so seeding here means "start the search near known-good configs"
+        # rather than "evaluate these exact candidates first".
+        if getattr(args, "init_population", None):
+            seed_pop, sources = load_population_with_sources(args.init_population)
+            # Use ONLY the preset-derived individuals for the centroid, not the
+            # random fill -- averaging in random noise dilutes exactly the
+            # signal we want to seed CMA-ES's mean with. If every individual
+            # happens to be random (no presets were found), fall back to the
+            # full population rather than crashing.
+            preset_indices = [i for i, s in enumerate(sources) if s != "random"]
+            source_indices = preset_indices if preset_indices else list(range(len(seed_pop)))
+            unit_seeds = [to_unit(seed_pop[i]) for i in source_indices]
+            x0 = [sum(v[d] for v in unit_seeds) / len(unit_seeds) for d in range(DIM)]
+            # Start with a tighter sigma when seeding from real presets --
+            # we already trust this neighborhood, no need for as wide an
+            # initial search as the cold-start default.
+            sigma0 = 0.2 if preset_indices else 0.3
+        else:
+            x0 = [0.5] * DIM
+            sigma0 = 0.3
 
         opts = {
             "bounds": [0.0, 1.0],
@@ -132,6 +154,8 @@ def parse_args():
     p.add_argument("--frame_idx", type=int, default=0)
 
     p.add_argument("--seed", type=int, default=1337)
+    p.add_argument("--init_population", default=None,
+                    help="path to a population JSON built by core/population_init.py; seeds the search mean at its centroid")
     return p.parse_args()
 
 

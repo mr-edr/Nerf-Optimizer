@@ -79,6 +79,27 @@ def _deep_get(d: Dict[str, Any], path: List[str], default=None) -> Any:
     return cur
 
 
+def extract_genome_from_config(cfg: Dict[str, Any]) -> Vector:
+    """
+    Reverse of apply_genome(): reads a real Instant-NGP config dict (e.g.
+    a shipped preset like base.json / big.json) and pulls out whatever
+    value each Param in SEARCH_SPACE actually has at that path.
+
+    Used for preset-seeding (core/population_init.py) -- lets us start
+    search from known-good hand-tuned configs instead of pure noise.
+    If a preset doesn't set a given path (e.g. it omits l2_reg), we fall
+    back to that Param's own sample() as a stand-in, then the value is
+    clamped/sanitized regardless.
+    """
+    vector = []
+    for param in SEARCH_SPACE:
+        raw = _deep_get(cfg, param.path, default=None)
+        if raw is None:
+            raw = param.sample()  # preset doesn't set this -- fall back to a random valid value
+        vector.append(raw)
+    return sanitize(vector)
+
+
 # ----------------------------------------------------------------------
 # Unit-space <-> value-space conversion, for PSO / DE / CMA-ES
 # ----------------------------------------------------------------------
