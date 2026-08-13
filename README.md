@@ -88,16 +88,14 @@ gracefully if it's not installed. `cma` is only required for
 All optimizers share the same core CLI arguments:
 
 ```bash
-python3 -m optimizers.<algorithm> \
+python3 experiment_runner.py \
   --ngp_dir ../instant-ngp \
   --scene ../instant-ngp/data/nerf/fox \
   --base ../instant-ngp/configs/nerf/base.json \
-  --out_dir analysis/runs/<algorithm> \
+  --out_dir results/fox \
   --pop_size 8 --generations 8
 ```
 
-(`particle_swarm.py` uses `--iterations` instead of `--generations`;
-`random_search.py` uses `--n_samples` instead of `--pop_size`.)
 
 Each run writes a CSV log (`<algorithm>_log.csv`) with per-evaluation
 fitness, success/failure status, VRAM peak, and elapsed time, plus
